@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>flex tool</title>
+	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="css/monokai-sublime.css">
+	<script src="js/highlight.pack.js"></script>
+	<script src="js/main.js"></script>
+	<script src="js/vue.min.js"></script>
+</head>
+<body>
+
+<div class="wrap" id="app">
+	<aside class="control">
+		<h3>父元素属性</h3>
+		<ul>
+			<template v-for="p in parentElement">
+			<li>
+				<div class="propertys">
+					<span class="property" :data="p.property" :data-title="p.description.chn">{{ p.property }}：</span>
+				</div>
+				<div class="values" data-bind="parent">
+					<template v-for="v in p.value">
+						<label class="value" :class="{default: v.default}" :data-value="v.name" :data-title="v.description.chn">{{ v.name }}</label>
+					</template>
+				</div>
+			</li>
+			</template>
+		</ul>
+		<h3>子元素属性</h3>
+		<ul>
+			<li>
+				<div class="propertys">
+					<span class="property" data-title="属性只会对选中的元素有效">操作元素：</span>
+				</div>
+				<template v-for="(box, k) in childNum">
+					<a class="value" :class="{active: nowChild === k}" @click="chooseBox(k)">Box{{ box }}</a>
+				</template>
+			</li>
+
+			<template v-for="(ce, ppk) in childElement">
+				<template v-if="ppk === nowChild">
+					<template v-for="(ce, pk) in ce">
+						<li>
+							<div class="propertys">
+								<span class="property" :data="ce.property" :data-title="ce.description.chn">{{ ce.property }}：</span>
+							</div>
+							<div class="values" data-bind="child">
+								<template v-for="(v, vk) in ce.value">							
+									<template v-if="v.control === 'input'">
+										<input class="value" :class="{default: v.default, active: v.chooseValue !== undefined}" :type="v.type" :placeholder="v.placeholder" :min="v.min" :style="v.style" v-model="v.value" :data-title="v.description.chn" @input="chooseBoxValue(pk, vk, true)">
+									</template>
+									<template v-else>
+										<label class="value" :class="{default: v.default, active: v.chooseValue !== undefined}" :data-value="v.name" :data-title="v.description.chn" @click="chooseBoxValue(pk, vk)">
+											{{ v.name }}
+										</label>
+									</template>
+								</template>
+							</div>
+						</li>
+					</template>
+				</template>
+			</template>
+		</ul>
+		<h3>代码</h3>
+		<pre>
+			<code class="code-wrap-parent"></code>
+			<template v-for="(v, k) in childNum">
+				<code :class="'code-wrap-child-'+ v"></code>
+			</template>
+		</pre>
+		<br>
+		<h3>相关</h3>
+		<a href="http://flexboxfroggy.com/#zh-cn" target="_blank">弹性盒子小游戏</a>
+		<a href="http://isux.tencent.com/css3/tools.html" target="_blank">CSS3 动画工具</a>
+	</aside>
+	<div class="show">
+		<div class="flex-container">
+			<template v-for="box in childNum">
+				<div class="flex-item">{{ box }}</div>
+			</template>
+		</div>
+	</div>
+</div>
+
+<script>
+
+const app = new Vue({
+	el: '#app',
+	mounted: function () {
+		this.init()
+	},
+	methods: {
+		init: function () {
+			for (let i = 0; i < this.childNum; i++) {
+				this.childElement.push(this.childProperty)
+				this.childChoosed.push([
+					{
+						chooseValue: ''
+					}
+				])
+			}
+		},
+		chooseBox: function (k) {
+			this.nowChild = k
+		},
+		chooseBoxValue: function (propertyKey, valueKey, enter) {
+			enter = enter || false;
+
+			const choose = this.childElement[this.nowChild][propertyKey],
+				childNumber = this.nowChild + 1,
+				codeWrap = $(".code-wrap-child-"+ childNumber),
+				nowBox = $(".flex-item:nth-child("+ childNumber +")");
+
+			this.childElement[this.nowChild][propertyKey].value[valueKey].chooseValue = this.childElement[this.nowChild][propertyKey].value[valueKey].name; // 存储当前选择的值
+			// this.childChoosed[this.nowChild][propertyKey].chooseValue = choose.value[valueKey].name; // 存储当前选择的值
+			console.log(this.childElement);
+			
+			if (enter){
+				nowBox.style.cssText += choose.value[valueKey].name +":"+ choose.value[valueKey].value;
+			} else {
+				nowBox.style.cssText += choose.property +":"+ choose.value[valueKey].name;
+			}
+
+			if (enter === false || choose.value[valueKey].value !== "") {
+				// 代码高亮
+				const style = nowBox.style.cssText.replace(/; /g, ";").split(";");
+				style.pop();
+				var nowBoxStyle = style.join(";\n\t");
+				codeWrap.innerText = `.flex-item:nth-child(${childNumber}){\n\t${nowBoxStyle}\n}`;
+				hljs.highlightBlock(codeWrap);
+			}
+		}
+	},
+	watch: {
+		nowChild: {  
+            handler: function(val,oldval) {
+                console.log(val.name)
+            },
+            deep:true//对象内部的属性监听，也叫深度监听
+        }
+	},
+	data: {
+		parentElement: [
+			{
+				property: "flex-direction",
+				description: {
+					"chn": "排列方式"
+				},
+				value: [
+					{
+						default: true,
+						name: "row",
+						description: {
+							"chn": "横向排列，从左到右排列（左对齐），默认的排列方式"
+						}
+					},
+					{
+						name: "row-reverse",
+						description: {
+							"chn": "反转横向排列，从右到左排列（右对齐）"
+						}
+					},
+					{
+						name: "column",
+						description: {
+							"chn": "纵向排列，从上到下排列"
+						}
+					},
+					{
+						name: "column-reverse",
+						description: {
+							"chn": "反转纵向排列，从下到上排列"
+						}
+					}
+				]
+			},
+			{
+				property: "justify-content",
+				description: {
+					chn: "水平对齐"
+				},
+				value: [
+					{
+						default: true,
+						name: "flex-start",
+						description: {
+							chn: "左对齐，默认的对齐方式"
+						}
+					},
+					{
+						name: "flex-end",
+						description: {
+							chn: "右对齐"
+						}
+					},
+					{
+						name: "center",
+						description: {
+							chn: "居中对齐，紧挨着"
+						}
+					},
+					{
+						name: "space-between",
+						description: {
+							chn: "平均分布，元素之间的间隔相等"
+						}
+					},
+					{
+						name: "space-around",
+						description: {
+							chn: "平均分布，元素的左右间隔相等"
+						}
+					}
+				]
+			},
+			{
+				property: "align-items",
+				description: {
+					chn: "垂直对齐"
+				},
+				value: [
+					{
+						name: "flex-start",
+						description: {
+							chn: "对齐垂直方向的顶部"
+						}
+					},
+					{
+						name: "flex-end",
+						description: {
+							chn: "对齐垂直方向的底部"
+						}
+					},
+					{
+						name: "center",
+						description: {
+							chn: "对齐垂直方向的中间"
+						}
+					},
+					{
+						name: "baseline",
+						description: {
+							chn: "如弹性盒子元素的行内轴与侧轴为同一条，则该值与'flex-start'等效。其它情况下，该值将参与基线对齐"
+						}
+					},
+					{
+						default: true,
+						name: "stretch",
+						description: {
+							chn: "如果指定侧轴大小的属性值为'auto'，则其值会使项目的边距盒的尺寸尽可能接近所在行的尺寸，但同时会遵照'min/max-width/height'属性的限制"
+						}
+					}
+				]
+			},
+			{
+				property: "flex-wrap",
+				description: {
+					chn: "换行方式"
+				},
+				value: [
+					{
+						default: true,
+						name: "nowrap",
+						description: {
+							chn: "默认，弹性容器为单行"
+						}
+					},
+					{
+						name: "wrap",
+						description: {
+							chn: "弹性容器为多行"
+						}
+					},
+					{
+						name: "wrap-reverse",
+						description: {
+							chn: "反转 wrap 排列"
+						}
+					}
+				]
+			},
+			{
+				property: "align-content",
+				description: {
+					chn: "用于修改 flex-wrap 属性的行为"
+				},
+				value: [
+					{
+						default: true,
+						name: "stretch",
+						description: {
+							chn: "默认，各行将会伸展以占用剩余的空间"
+						}
+					},
+					{
+						name: "flex-start",
+						description: {
+							chn: "各行向弹性盒容器的起始位置堆叠"
+						}
+					},
+					{
+						name: "flex-end",
+						description: {
+							chn: "各行向弹性盒容器的结束位置堆叠"
+						}
+					},
+					{
+						name: "center",
+						description: {
+							chn: "各行向弹性盒容器的中间位置堆叠"
+						}
+					},
+					{
+						name: "space-between",
+						description: {
+							chn: "各行在弹性盒容器中平均分布"
+						}
+					},
+					{
+						name: "space-around",
+						description: {
+							chn: "各行在弹性盒容器中平均分布，两端保留子元素与子元素之间间距大小的一半"
+						}
+					}
+				]
+			}
+		],
+		childNum: 5,
+		childElement: [],
+		nowChild: 0,
+		childChoosed: [],
+		childProperty: [
+			{
+				property: "align-self",
+				description: {
+					"chn": "自身垂直方向对齐"
+				},
+				value: [
+					{
+						default: true,
+						name: "auto",
+						description: {
+							"chn": "如果'align-self'的值为'auto'，则其计算值为元素的父元素的'align-items'值，如果其没有父元素，则计算值为'stretch'"
+						}
+					},
+					{
+						name: "flex-start",
+						description: {
+							"chn": "对齐垂直方向的顶部"
+						}
+					},
+					{
+						name: "flex-end",
+						description: {
+							"chn": "对齐垂直方向的底部"
+						}
+					},
+					{
+						name: "center",
+						description: {
+							"chn": "对齐垂直方向的中间"
+						}
+					},
+					{
+						name: "baseline",
+						description: {
+							"chn": "如弹性盒子元素的行内轴与侧轴为同一条，则该值与'flex-start'等效。其它情况下，该值将参与基线对齐"
+						}
+					},
+					{
+						name: "stretch",
+						description: {
+							"chn": "如果指定侧轴大小的属性值为'auto'，则其值会使项目的边距盒的尺寸尽可能接近所在行的尺寸，但同时会遵照'min/max-width/height'属性的限制"
+						}
+					}
+				]
+			},
+			{
+				property: "flex",
+				description: {
+					"chn": "flex <br> 属性是 flex-grow、flex-shrink 和 flex-basis 属性的简写属性，默认值：0 1 auto"
+				},
+				value: [
+					{
+						name: "auto",
+						description: {
+							"chn": "与 1 1 auto 相同"
+						}
+					},
+					{
+						default: true,
+						name: "initial",
+						description: {
+							"chn": "初始值，与 0 1 auto 相同"
+						}
+					},
+					{
+						name: "inherit",
+						description: {
+							"chn": "从父元素继承该属性"
+						}
+					},
+					{
+						name: "none",
+						description: {
+							"chn": "与 0 0 auto 相同"
+						}
+					},
+					{
+						control: "input",
+						type: "number",
+						name: "flex-grow",
+						placeholder: "0",
+						style: "width: 60px",
+						value: "",
+						min: 0,
+						description: {
+							"chn": "flex-grow 数字（正值），定义弹性盒子元素的扩展比率"
+						}
+					},
+					{
+						control: "input",
+						type: "number",
+						name: "flex-shrink",
+						placeholder: "1",
+						style: "width: 60px",
+						value: "",
+						min: 0,
+						description: {
+							"chn": "flex-shrink 数字（正值），定义弹性盒子元素的收缩比率"
+						}
+					},
+					{
+						control: "input",
+						type: "text",
+						name: "flex-basis",
+						placeholder: "auto",
+						style: "width: 60px",
+						value: "",
+						min: 0,
+						description: {
+							"chn": "flex-basis 数字（正值），有单位，定义弹性盒子元素的默认基准值"
+						}
+					}
+				]
+			},
+			{
+				property: "order",
+				description: {
+					"chn": "排序"
+				},
+				value: [
+					{
+						control: "input",
+						type: "number",
+						style: "width: 60px",
+						name: "order",
+						value: "",
+						description: {
+							"chn": "用整数值来定义排列顺序，数值小的排在前面。可以为负值。"
+						}
+					},
+				]
+			},
+			{
+				property: "margin",
+				description: {
+					"chn": "完美居中"
+				},
+				value: [
+					{
+						control: "input",
+						type: "text",
+						name: "margin",
+						placeholder: "5px 3px 5px 3px / auto",
+						style: "width: 160px",
+						value: "",
+						description: {
+							"chn": "数字，四个值，分别是上右下左<br>或者 auto（垂直水平居中）"
+						}
+					},
+				]
+			}
+		]
+	}
+})
+
+</script>
+
+</body>
+</html>
